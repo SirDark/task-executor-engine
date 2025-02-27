@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_container
+    restart: always
+    environment:
+      POSTGRES_DB: demo_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Pwd123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  webapi:
+    build: 
+        context: ./API  # Adjusted to point to the API folder
+        dockerfile: Dockerfile
+    container_name: webapi_container
+    restart: always
+    depends_on:
+      - db
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Username=postgres;Password=Pwd123;Database=demo_db"
+    ports:
+      - "3500:3500"
+
+volumes:
+  postgres_data:

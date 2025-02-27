@@ -1,8 +1,7 @@
-﻿using API.Models.Entities;
+﻿using API.Models.Dto;
+using API.Models.Entities;
 using API.Repositories;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace API.Controllers;
 
@@ -19,13 +18,21 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] EngineTask task)
+    public async Task<IActionResult> Post([FromBody] CommandDto command)//the task specified that I the request body should look like '{"command": "echo hello && sleep10"}' that is why I use the CommandDto in this case
     {
+        EngineTask task = new EngineTask
+        {
+            id = Guid.NewGuid(),
+            command = command.command,
+            status = Status.queued,
+            started_at = DateTime.UtcNow,
+        };
         await _taskRepository.CreateAsync(task);
         return Ok();
     }
     [HttpGet]
-    public async Task<IActionResult> Get() {
+    public async Task<IActionResult> Get()
+    {
         var tasks = await _taskRepository.GetAllAsync();
         return Ok(tasks);
     }
