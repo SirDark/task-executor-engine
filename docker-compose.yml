@@ -12,6 +12,19 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_container
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"  # RabbitMQ main service
+      - "15672:15672"  # RabbitMQ management UI
+    volumes:
+      - ./definitions.json:/etc/rabbitmq/definitions.json
 
   webapi:
     build: 

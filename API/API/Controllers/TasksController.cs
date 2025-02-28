@@ -1,6 +1,7 @@
 ﻿using API.Models.Dto;
 using API.Models.Entities;
 using API.Repositories;
+using API.Services.RabbitMQ;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
@@ -11,10 +12,12 @@ public class TasksController : ControllerBase
 {
     private readonly ILogger<TasksController> _logger;
     private readonly ITaskRepository _taskRepository;
-    public TasksController(ILogger<TasksController> logger, ITaskRepository taskRepository)
+    private readonly IRabbitMQService _rabbitMQService;
+    public TasksController(ILogger<TasksController> logger, ITaskRepository taskRepository, IRabbitMQService rabbitMQService)
     {
         _logger = logger;
         _taskRepository = taskRepository;
+        _rabbitMQService = rabbitMQService;
     }
 
     [HttpPost]
@@ -28,7 +31,8 @@ public class TasksController : ControllerBase
             started_at = DateTime.UtcNow,
         };
         await _taskRepository.CreateAsync(task);
-        return Ok();
+        await _rabbitMQService.PublishTaskAsync(task.command, task.id);
+        return Created();
     }
     [HttpGet]
     public async Task<IActionResult> Get()
