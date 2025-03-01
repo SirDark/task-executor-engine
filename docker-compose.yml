@@ -47,6 +47,8 @@ services:
     restart: always
     depends_on:
       - rabbitmq 
+      - db
+      - webapi
 
 volumes:
   postgres_data:

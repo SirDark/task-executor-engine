@@ -1,6 +1,9 @@
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Diagnostics;
 using System.Text;
+using TaskExecutor.Data;
 
 namespace TaskExecutor
 {
@@ -9,9 +12,10 @@ namespace TaskExecutor
         private readonly ILogger<Worker> _logger;
         private readonly ConnectionFactory _factory;
         private IConnection? _connection;
-        private IChannel? _channel;
-        private string QueueName = "task_queue";
-        //private readonly HttpClient _httpClient = new() { BaseAddress = new Uri("http://localhost:5000/") };
+        private IChannel? _taskQueueChannel;
+        private IChannel? _updateQueueChannel;
+        private string TaskQueueName = "task_queue";
+        private string UpdateQueueName = "update_queue";
 
         public Worker(ILogger<Worker> logger)
         {
@@ -23,6 +27,51 @@ namespace TaskExecutor
                 Password = "password"
             };
         }
+        private async Task ProcessMessage(TaskMessage taskMessage)
+        {
+            UpdateMessage updateInProgress = new
+            (
+                Id: taskMessage.Id,
+                started_at: DateTime.Now,
+                finished_at: null,
+                status: Status.in_progress,
+                exit_code: null,
+                stderr: null,
+                stdout: null
+            );
+            await PublishTaskAsync(updateInProgress);
+
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "/bin/bash",
+                    Arguments = $"-c \"{taskMessage.Command}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false
+                }
+            };
+
+            process.Start();
+
+            string stderr = await process.StandardError.ReadToEndAsync();
+            string stdout = await process.StandardOutput.ReadToEndAsync();
+
+            process.WaitForExit();
+
+            UpdateMessage updateFinished = new(
+                Id: taskMessage.Id,
+                started_at: updateInProgress.started_at,
+                finished_at: DateTime.Now,
+                status: Status.finished,
+                exit_code: process.ExitCode,
+                stderr: stderr,
+                stdout: stdout
+            );
+            await PublishTaskAsync(updateFinished);
+
+        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -31,62 +80,35 @@ namespace TaskExecutor
             {
                 _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
             }
-            if (_channel == null)
+            if (_taskQueueChannel == null)
             {
                 _connection = await _factory.CreateConnectionAsync();
-                _channel = await _connection.CreateChannelAsync();
-                await _channel.QueueDeclareAsync(queue: QueueName, durable: true, autoDelete: false, exclusive: false, arguments: null);
+                _taskQueueChannel = await _connection.CreateChannelAsync();
+                _updateQueueChannel = await _connection.CreateChannelAsync();
+                await _taskQueueChannel.QueueDeclareAsync(queue: TaskQueueName, durable: true, autoDelete: false, exclusive: false, arguments: null);
+                await _updateQueueChannel.QueueDeclareAsync(queue: UpdateQueueName, durable: true, autoDelete: false, exclusive: false, arguments: null);
 
             }
-            var consumer = new AsyncEventingBasicConsumer(_channel);
+            var consumer = new AsyncEventingBasicConsumer(_taskQueueChannel);
             consumer.ReceivedAsync += async (model, ea) =>
             {
                 var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                Console.WriteLine(message);
-                // Wait for 100 milliseconds
-                await Task.Delay(10);
+                var messageJson = Encoding.UTF8.GetString(body);
 
-                Console.WriteLine("Waited 100ms before processing next message");
+                var taskMessage = JsonConvert.DeserializeObject<TaskMessage>(messageJson);
+                if (taskMessage != null)
+                    await ProcessMessage(taskMessage);
             };
 
-            await _channel.BasicConsumeAsync(queue: QueueName, autoAck: true, consumer: consumer);
+            await _taskQueueChannel.BasicConsumeAsync(queue: TaskQueueName, autoAck: true, consumer: consumer);
 
             await Task.Delay(Timeout.Infinite, stoppingToken);
-            /*var tasks = await _httpClient.GetFromJsonAsync<List<TaskItem>>("api/tasks/queued");
-            if (tasks == null || tasks.Count == 0)
-            {
-                await Task.Delay(2000, stoppingToken);
-                continue;
-            }*/
-
-            /*foreach (var engineTask in tasks)
-            {
-                _logger.LogInformation($"Executing Task {engineTask.Id}: {engineTask.Command}");
-                await _httpClient.PutAsJsonAsync($"api/tasks/update/{engineTask.Id}", engineTask);
-
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "/bin/bash",
-                        Arguments = $"-c \"{engineTask.Command}\"",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false
-                    }
-                };
-
-                process.Start();
-                    
-                process.WaitForExit();
-                var exitCode = process.ExitCode;
-
-                await _httpClient.PutAsJsonAsync($"api/tasks/update/{engineTask.Id}", engineTask);
-                _logger.LogInformation($"Task {engineTask.Id} completed with exit code {exitCode}");
-            }*/
+        }
+        public async Task PublishTaskAsync(UpdateMessage message)
+        {
+            var messageBody = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(message));
+            await _updateQueueChannel!.BasicPublishAsync(exchange: String.Empty, routingKey: UpdateQueueName, body: messageBody);
         }
 
     }
 }
-public record TaskItem(Guid Id, string Command);

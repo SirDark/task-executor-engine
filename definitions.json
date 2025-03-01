@@ -5,6 +5,12 @@
       "durable": false,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "update_queue",
+      "durable": false,
+      "auto_delete": false,
+      "arguments": {}
     }
   ],
   "exchanges": [],
