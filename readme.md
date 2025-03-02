@@ -52,3 +52,24 @@ you can use docker-compose up --build -d to build
 to shut it down you can use docker-compose down
 if you want to take it down with the volumes then 
 docker-compose down --volumes
+
+#CURL
+## get all
+curl --request GET \
+  --url http://localhost:3500/api/tasks \
+  --header 'User-Agent: Insomnia/2023.5.6'
+
+## get at
+curl --request GET \
+  --url 'http://localhost:3500/api/tasks/894d26d1-3e2a-4abb-9641-37d087b3d31d?id=e144c0ef-96c2-4f7d-8425-726134f152e9' \
+  --header 'Content-Type: application/json' \
+  --header 'User-Agent: Insomnia/2023.5.6'
+
+## add task
+curl --request POST \
+  --url http://localhost:3500/api/tasks \
+  --header 'Content-Type: application/json' \
+  --header 'User-Agent: Insomnia/2023.5.6' \
+  --data '{
+  "command": "echo hello"
+}'
