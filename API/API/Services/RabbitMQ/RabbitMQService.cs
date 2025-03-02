@@ -1,4 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using API.Options;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
 
@@ -9,15 +11,16 @@ public class RabbitMQService : IRabbitMQService
     private readonly ConnectionFactory _factory;
     private IConnection? _connection;
     private IChannel? _channel;
-    private const string QueueName = "task_queue";
+    private string _queueName;
 
-    public RabbitMQService()
+    public RabbitMQService(IOptions<RabbitOptions> options)
     {
         _factory = new ConnectionFactory() { 
-            HostName = "rabbitmq",
-            UserName = "user",
-            Password = "password"
+            HostName = options.Value.Host,
+            UserName = options.Value.Username,
+            Password = options.Value.Password,
         };
+        _queueName = options.Value.TaskQueueName;
     }
 
     private async Task InitalizeConnection()
@@ -26,7 +29,7 @@ public class RabbitMQService : IRabbitMQService
         {
             _connection = await _factory.CreateConnectionAsync();
             _channel = await _connection.CreateChannelAsync();
-            await _channel.QueueDeclareAsync(queue: QueueName, durable: true, autoDelete: false, exclusive: false,arguments: null);
+            await _channel.QueueDeclareAsync(queue: _queueName, durable: true, autoDelete: false, exclusive: false,arguments: null);
             
         }
     }
@@ -42,6 +45,13 @@ public class RabbitMQService : IRabbitMQService
         var messageBody = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(taskMessage));
 
 
-        await _channel!.BasicPublishAsync(exchange: String.Empty, routingKey: QueueName, body: messageBody);
+        await _channel!.BasicPublishAsync(exchange: String.Empty, routingKey: _queueName, body: messageBody);
+    }
+    public async Task<IChannel> GetChannelAsync(string queueName)
+    {
+        var newConnection = await _factory.CreateConnectionAsync();
+        var newChannel = await newConnection.CreateChannelAsync();
+        await newChannel.QueueDeclareAsync(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+        return newChannel;
     }
 }

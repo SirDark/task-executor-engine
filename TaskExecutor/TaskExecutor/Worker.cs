@@ -31,8 +31,8 @@ namespace TaskExecutor
         {
             UpdateMessage updateInProgress = new
             (
-                Id: taskMessage.Id,
-                started_at: DateTime.Now,
+                Id: taskMessage.TaskId,
+                started_at: DateTime.UtcNow.ToUniversalTime(),
                 finished_at: null,
                 status: Status.in_progress,
                 exit_code: null,
@@ -59,11 +59,11 @@ namespace TaskExecutor
             string stdout = await process.StandardOutput.ReadToEndAsync();
 
             process.WaitForExit();
-
+            Console.WriteLine("exit code: " + process.ExitCode);
             UpdateMessage updateFinished = new(
-                Id: taskMessage.Id,
+                Id: taskMessage.TaskId,
                 started_at: updateInProgress.started_at,
-                finished_at: DateTime.Now,
+                finished_at: DateTime.UtcNow.ToUniversalTime(),
                 status: Status.finished,
                 exit_code: process.ExitCode,
                 stderr: stderr,

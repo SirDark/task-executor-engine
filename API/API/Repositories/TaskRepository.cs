@@ -1,4 +1,5 @@
 ﻿using API.Data;
+using API.Models.Dto;
 using API.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,4 +25,20 @@ public class TaskRepository : ITaskRepository
     {
         return await _appDbContext.Tasks.ToListAsync();
     }
+    public async Task<EngineTask?> UpdateTask(UpdateTaskDto updateTask)
+    {
+        var engineTask = await _appDbContext.Tasks.FirstOrDefaultAsync(x => x.id == updateTask.id);
+        if (engineTask == null) { 
+            return null;
+        }
+        engineTask.status = updateTask.status.ToString();
+        engineTask.exitcode = updateTask.exit_code;
+        engineTask.stdout = updateTask.stdout;
+        engineTask.stderr = updateTask.stderr;
+        engineTask.started_at = updateTask.started_at;
+        engineTask.finished_at  = updateTask.finished_at;
+        await _appDbContext.SaveChangesAsync();
+        return engineTask;
+    }
+
 }

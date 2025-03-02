@@ -27,8 +27,8 @@ public class TasksController : ControllerBase
         {
             id = Guid.NewGuid(),
             command = command.command,
-            status = Status.queued,
-            started_at = DateTime.UtcNow,
+            status = Status.queued.ToString(),
+            started_at = null,
         };
         await _taskRepository.CreateAsync(task);
         await _rabbitMQService.PublishTaskAsync(task.command, task.id);

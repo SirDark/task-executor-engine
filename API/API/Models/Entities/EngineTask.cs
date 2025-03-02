@@ -16,7 +16,7 @@ public class EngineTask
     [Column("finished_at")]
     public DateTime? finished_at { get; set; }
     [Column("status")]
-    public required Status status { get; set; }
+    public required string status { get; set; }
     [Column("stdout")]
     public string? stdout { get; set; }
     [Column("stderr")]
