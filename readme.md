@@ -1,5 +1,5 @@
 #Known issues
-when you start it via docker compose the executor and the api container starts when the rabbtiMQ is still setting up, if this is the first start then the postgres as well, because of this you may see some errors as these 
+when you start it via docker compose the executor and the api container starts when the rabbtiMQ is still setting up, if this is the first start then the postgres as well, you may see some errors as these 
 containers are failing to connect. When the rabbit and the db gets set up the errors will dissapear but because of this issue after you start the service you need to wait a couple of seconds before the API can consume your requests
 after that everything should work fine.
 

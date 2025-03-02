@@ -38,12 +38,10 @@ public class UpdateTaskService : BackgroundService
                 var messageJson = Encoding.UTF8.GetString(body);
 
                 var taskMessage = JsonConvert.DeserializeObject<UpdateTaskDto>(messageJson);
-                Console.WriteLine(taskMessage!.id);
-                Console.WriteLine("exir code" + taskMessage!.exit_code);
                 using (var scope = _serviceFactory.CreateScope())
                 {
                     var repository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
-                    var task = await repository.UpdateTask(taskMessage);
+                    var task = await repository.UpdateTask(taskMessage!);
                 }
             }
             catch (Exception ex)
