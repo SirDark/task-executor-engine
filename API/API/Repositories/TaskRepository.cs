@@ -25,6 +25,12 @@ public class TaskRepository : ITaskRepository
     {
         return await _appDbContext.Tasks.ToListAsync();
     }
+
+    public async Task<EngineTask?> GetTaskAsync(Guid id)
+    {
+        return await _appDbContext.Tasks.FirstOrDefaultAsync(x => x.id == id);
+    }
+
     public async Task<EngineTask?> UpdateTask(UpdateTaskDto updateTask)
     {
         var engineTask = await _appDbContext.Tasks.FirstOrDefaultAsync(x => x.id == updateTask.id);

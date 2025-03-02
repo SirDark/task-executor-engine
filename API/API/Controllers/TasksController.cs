@@ -32,7 +32,15 @@ public class TasksController : ControllerBase
         };
         await _taskRepository.CreateAsync(task);
         await _rabbitMQService.PublishTaskAsync(task.command, task.id);
-        return Created();
+        return StatusCode(201, task);
+    }
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetAt(Guid id)
+    {
+        var task = await _taskRepository.GetTaskAsync(id);
+        if (task == null)
+            return NotFound();
+        return Ok(task);
     }
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -40,4 +48,5 @@ public class TasksController : ControllerBase
         var tasks = await _taskRepository.GetAllAsync();
         return Ok(tasks);
     }
+    
 }
